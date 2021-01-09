@@ -5,21 +5,20 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
-from selenium.common.exceptions import StaleElementReferenceException
+
 from bs4 import BeautifulSoup
 
-##############################################################  ############
-##################### variable related selenium ##########################
-##########################################################################
+
 options = webdriver.ChromeOptions()
 options.add_argument('headless')
 options.add_argument('lang=ko_KR')
 chromedriver_path = "/Users/jerald/Downloads/chromedriver"
+
 driver = webdriver.Chrome(os.path.join(os.getcwd(), chromedriver_path), options=options)  # chromedriver 열기
 
 
 def main():
-    global driver, load_wb, review_num
+    global driver
 
     driver.implicitly_wait(4)  # 렌더링 될때까지 기다린다 4초
     driver.get('https://map.kakao.com/')  # 주소 가져오기
@@ -51,11 +50,11 @@ def search(place):
     html = driver.page_source
 
     soup = BeautifulSoup(html, 'html.parser')
-    place_lists = soup.select('.placelist > .PlaceItem') # 검색된 장소 목록
+    place_lists = soup.select('.placelist > .PlaceItem')  # 검색된 장소 목록
     # place_lists = soup.select('.placelist') # 검색된 장소 목록
 
     # 검색된 첫 페이지 장소 목록 크롤링하기
-    crawling(place, place_lists)
+    crawling(place_lists)
     search_area.clear()
 
     # 우선 더보기 클릭해서 2페이지
@@ -66,15 +65,15 @@ def search(place):
         # 2~ 5페이지 읽기
         for i in range(2, 6):
             # 페이지 넘기기
-            xPath = '//*[@id="info.search.page.no' + str(i) + '"]'
-            driver.find_element_by_xpath(xPath).send_keys(Keys.ENTER)
+            xpath = '//*[@id="info.search.page.no' + str(i) + '"]'
+            driver.find_element_by_xpath(xpath).send_keys(Keys.ENTER)
             sleep(1)
 
             html = driver.page_source
             soup = BeautifulSoup(html, 'html.parser')
-            place_lists = soup.select('.placelist > .PlaceItem') # 장소 목록 list
+            place_lists = soup.select('.placelist > .PlaceItem')  # 장소 목록 list
             # place_lists = soup.select('.placelist') # 장소 목록 list
-            crawling(place, place_lists)
+            crawling(place_lists)
 
     except ElementNotInteractableException:
         print('not found')
@@ -82,19 +81,14 @@ def search(place):
         search_area.clear()
 
 
-def crawling(place, place_lists):
-    """
-    페이지 목록을 받아서 크롤링 하는 함수
-    :param place: 리뷰 정보 찾을 장소이름
-    """
-
+def crawling(place_lists):
     ad_flg = 0
 
     # while_flag = False
     for i, place in enumerate(place_lists):
         # 광고에 따라서 index 조정해야함
         # if i >= 6:
-        i = i + ad_flg;
+        i = i + ad_flg
 
         place_name = place.select('.head_item > .tit_name > .link_name')[0].text  # place name
         place_address = place.select('.info_item > .addr > p')[0].text  # place address
@@ -105,23 +99,27 @@ def crawling(place, place_lists):
             sleep(1)
 
             print('####', place_name)
+            print('####', place_address)
 
             # 첫 페이지
-            extract_review(place_name)
+            extract_review()
 
             # 2-5 페이지
             idx = 3
             try:
-                page_num = len(driver.find_elements_by_class_name('link_page')) # 페이지 수 찾기
-                for i in range(page_num-1):
+                page_num = len(driver.find_elements_by_class_name('link_page'))  # 페이지 수 찾기
+                for num in range(page_num-1):
                     # css selector를 이용해 페이지 버튼 누르기
-                    driver.find_element_by_css_selector('#mArticle > div.cont_evaluation > div.evaluation_review > div > a:nth-child(' + str(idx) +')').send_keys(Keys.ENTER)
+                    driver.find_element_by_css_selector(
+                        '#mArticle > div.cont_evaluation > div.evaluation_review > div > a:nth-child('
+                        + str(idx)
+                        + ')').send_keys(Keys.ENTER)
                     sleep(1)
-                    extract_review(place_name)
+                    extract_review()
                     idx += 1
-                driver.find_element_by_link_text('다음').send_keys(Keys.ENTER) # 5페이지가 넘는 경우 다음 버튼 누르기
+                driver.find_element_by_link_text('다음').send_keys(Keys.ENTER)  # 5페이지가 넘는 경우 다음 버튼 누르기
                 sleep(1)
-                extract_review(place_name) # 리뷰 추출
+                extract_review()  # 리뷰 추출
             except (NoSuchElementException, ElementNotInteractableException):
                 print("no review in crawling 1")
 
@@ -130,14 +128,17 @@ def crawling(place, place_lists):
                 idx = 4
                 try:
                     page_num = len(driver.find_elements_by_class_name('link_page'))
-                    for i in range(page_num-1):
-                        driver.find_element_by_css_selector('#mArticle > div.cont_evaluation > div.evaluation_review > div > a:nth-child(' + str(idx) +')').send_keys(Keys.ENTER)
+                    for pnum in range(page_num-1):
+                        driver.find_element_by_css_selector(
+                            '#mArticle > div.cont_evaluation > div.evaluation_review > div > a:nth-child('
+                            + str(idx)
+                            + ')').send_keys(Keys.ENTER)
                         sleep(1)
-                        extract_review(place_name)
+                        extract_review()
                         idx += 1
-                    driver.find_element_by_link_text('다음').send_keys(Keys.ENTER) # 10페이지 이상으로 넘어가기 위한 다음 버튼 클릭
+                    driver.find_element_by_link_text('다음').send_keys(Keys.ENTER)  # 10페이지 이상으로 넘어가기 위한 다음 버튼 클릭
                     sleep(1)
-                    extract_review(place_name) # 리뷰 추출
+                    extract_review()  # 리뷰 추출
                 except (NoSuchElementException, ElementNotInteractableException):
                     print("no review in crawling 2")
                     break
@@ -149,7 +150,7 @@ def crawling(place, place_lists):
             ad_flg = ad_flg + 1
 
 
-def extract_review(place_name):
+def extract_review():
     global driver
 
     ret = True
