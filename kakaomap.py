@@ -28,8 +28,8 @@ def main():
 
     for i, place in enumerate(place_infos):
         # delay
-        if i % 4 == 0 and i != 0:
-            sleep(5)
+        # if i % 4 == 0 and i != 0:
+        #     sleep(5)
         print("#####", i)
         search(place)
 
